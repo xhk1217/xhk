@@ -3,17 +3,21 @@
   <div class="flex-col-center h-screen bg-red-600 text-white">
     <!-- text-6xl 设置超大字体，font-bold 加粗，animate-bounce 增加跳动动画 -->
     <h1 class="text-6xl font-bold mb-4 animate-bounce">
-      🧧 2026 新年快乐 🧧
+      🧧 {{ t('home.title') }} 🧧
     </h1>
     <!-- text-2xl 设置副标题字体大小 -->
     <p class="text-2xl">
-      蛇年大吉，万事如意！
+      {{ t('home.subtitle') }}
     </p>
     <!-- mt-8 设置顶部外边距 -->
-    <div class="mt-8">
+    <div class="mt-8 flex gap-4">
       <!-- 使用 Element Plus 的按钮组件，type="warning" 显示黄色，round 为圆角 -->
       <el-button type="warning" size="large" round @click="celebrate">
-        点我送祝福
+        {{ t('home.btnBlessing') }}
+      </el-button>
+      <!-- 跳转到功能测试页面 -->
+      <el-button type="info" size="large" round @click="router.push('/FunctionTest')">
+        {{ t('home.btnDemo') }}
       </el-button>
     </div>
   </div>
@@ -22,6 +26,11 @@
 <script setup lang="ts">
 // 引入 Element Plus 的消息提示组件
 import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+const router = useRouter()
 
 /**
  * 庆祝点击事件处理函数
@@ -29,7 +38,7 @@ import { ElMessage } from 'element-plus'
 const celebrate = () => {
   // 弹出成功提示消息
   ElMessage({
-    message: '祝你在 2026 年：身体健康，事业有成，阖家幸福！',
+    message: t('home.blessingMsg'),
     type: 'success', // 消息类型为成功
     duration: 5000, // 消息显示时长为 5 秒
   })

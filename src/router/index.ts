@@ -12,6 +12,11 @@ const router = createRouter({
       name: 'home', // 路由名称
       component: Home, // 对应的组件
     },
+    {
+      path: '/FunctionTest', // 功能测试页面
+      name: 'function-test',
+      component: () => import('../pages/FunctionTest.vue'), // 路由懒加载
+    },
   ],
 })
 

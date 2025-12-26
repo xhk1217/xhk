@@ -2,6 +2,7 @@ import { createApp } from 'vue' // 引入 Vue 的应用创建函数
 import { createPinia } from 'pinia' // 引入 Pinia 状态管理
 import App from './App.vue' // 引入根组件
 import router from './router' // 引入路由配置
+import i18n from './locales' // 引入国际化配置
 
 // 引入 UnoCSS 的虚拟样式文件，使原子类生效
 import 'virtual:uno.css'
@@ -17,6 +18,8 @@ const app = createApp(App)
 app.use(createPinia())
 // 注册路由插件，用于页面跳转
 app.use(router)
+// 注册国际化插件
+app.use(i18n)
 
 // 将应用挂载到 index.html 中 id 为 app 的 DOM 元素上
 app.mount('#app')
