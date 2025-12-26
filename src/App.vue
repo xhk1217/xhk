@@ -4,7 +4,17 @@
 </template>
 
 <script setup lang="ts">
-// 根组件逻辑，目前为空
+import { watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useSettingsStore } from '@/store/settings'
+
+const { locale } = useI18n()
+const settings = useSettingsStore()
+
+// 同步 Store 的语言到 i18n 实例
+watch(() => settings.lang, (newLang) => {
+  locale.value = newLang
+}, { immediate: true })
 </script>
 
 <style>

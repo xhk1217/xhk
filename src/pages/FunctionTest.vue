@@ -1,25 +1,25 @@
 <template>
-  <div class="min-h-screen p-4 md:p-8 transition-colors duration-300" :class="{ 'bg-gray-900 text-white': isDark, 'bg-gray-50 text-gray-900': !isDark }">
+  <div class="min-h-screen p-4 md:p-8 transition-colors duration-300 bg-[var(--bg-color)] text-[var(--text-main)]">
     <div class="max-w-4xl mx-auto">
       <!-- Header -->
-      <header class="flex justify-between items-center mb-8 pb-4 border-b border-gray-200 dark:border-gray-700">
+      <header class="flex justify-between items-center mb-8 pb-4 border-b border-[var(--border-color)]">
         <h1 class="text-3xl font-bold flex items-center gap-2">
           <i class="i-mdi-test-tube text-primary"></i>
           {{ t('test.title') }}
         </h1>
         <div class="flex gap-4">
-          <el-button @click="toggleLang" circle>
+          <el-button @click="handleLangToggle" circle>
             <i class="i-mdi-translate"></i>
           </el-button>
-          <el-button @click="toggleTheme" circle>
-            <i :class="isDark ? 'i-mdi-weather-sunny' : 'i-mdi-weather-night'"></i>
+          <el-button @click="settings.toggleTheme" circle>
+            <i :class="settings.isDark ? 'i-mdi-weather-sunny' : 'i-mdi-weather-night'"></i>
           </el-button>
         </div>
       </header>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Pinia Test -->
-        <section class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <section class="p-6 rounded-xl shadow-sm border border-[var(--border-color)] bg-[var(--card-bg)]">
           <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
             <i class="i-mdi-database"></i> {{ t('test.piniaTest') }}
           </h2>
@@ -30,11 +30,11 @@
               <el-button type="danger" @click="counter.decrement">{{ t('test.decrement') }}</el-button>
             </el-button-group>
           </div>
-          <p class="mt-4 text-sm text-gray-500">{{ t('test.piniaTip') }}</p>
+          <p class="mt-4 text-sm text-[var(--text-secondary)]">{{ t('test.piniaTip') }}</p>
         </section>
 
         <!-- Axios + Mock Test -->
-        <section class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <section class="p-6 rounded-xl shadow-sm border border-[var(--border-color)] bg-[var(--card-bg)]">
           <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
             <i class="i-mdi-api"></i> {{ t('test.axiosTest') }}
           </h2>
@@ -47,7 +47,7 @@
         </section>
 
         <!-- Icon Test -->
-        <section class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <section class="p-6 rounded-xl shadow-sm border border-[var(--border-color)] bg-[var(--card-bg)]">
           <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
             <i class="i-mdi-emoticon-outline"></i> {{ t('test.iconTest') }}
           </h2>
@@ -69,11 +69,11 @@
               <span class="text-xs">Element</span>
             </div>
           </div>
-          <p class="mt-4 text-sm text-gray-500">{{ t('test.iconTip') }}</p>
+          <p class="mt-4 text-sm text-[var(--text-secondary)]">{{ t('test.iconTip') }}</p>
         </section>
 
         <!-- Responsive Test -->
-        <section class="p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <section class="p-6 rounded-xl shadow-sm border border-[var(--border-color)] bg-[var(--card-bg)]">
           <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
             <i class="i-mdi-responsive"></i> {{ t('test.responsiveTest') }}
           </h2>
@@ -83,7 +83,7 @@
           <div class="block md:hidden p-4 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 rounded text-center">
             📱 {{ t('test.mobileView') }} (width < 768px)
           </div>
-          <p class="mt-4 text-sm text-gray-500">{{ t('test.responsiveTip') }}</p>
+          <p class="mt-4 text-sm text-[var(--text-secondary)]">{{ t('test.responsiveTip') }}</p>
         </section>
       </div>
 
@@ -120,28 +120,20 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useCounterStore } from '@/store/counter'
+import { useSettingsStore } from '@/store/settings'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const counter = useCounterStore()
+const settings = useSettingsStore()
 const router = useRouter()
 
-// 主题切换
-const isDark = ref(false)
-const toggleTheme = () => {
-  isDark.value = !isDark.value
-  if (isDark.value) {
-    document.documentElement.classList.add('dark')
-  } else {
-    document.documentElement.classList.remove('dark')
-  }
-}
-
 // 语言切换
-const toggleLang = () => {
-  locale.value = locale.value === 'zh-CN' ? 'en' : 'zh-CN'
+const handleLangToggle = () => {
+  const newLang = settings.lang === 'zh-CN' ? 'en' : 'zh-CN'
+  settings.setLang(newLang)
   ElMessage.success(t('test.success'))
 }
 
