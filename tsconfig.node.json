@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "composite": true, // 启用工程引用，允许此配置被其他 tsconfig 引用
+    "module": "ESNext", // 为 Node 环境指定生成的模块系统
+    "moduleResolution": "bundler", // 使用现代构建工具的模块解析策略
+    "allowSyntheticDefaultImports": true // 允许从没有默认导出的模块中默认导入
+  },
+  "include": ["vite.config.ts"] // 此配置专门用于校验 vite.config.ts 文件
+}
