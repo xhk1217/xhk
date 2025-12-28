@@ -3,7 +3,7 @@
   <div class="flex-col-center h-screen bg-red-600 text-white">
     <!-- text-6xl 设置超大字体，font-bold 加粗，animate-bounce 增加跳动动画 -->
     <h1 class="text-6xl font-bold mb-4 animate-bounce">
-      🧧 {{ t('home.title') }} 🧧
+      🧧 {{ t('home.title', { year: appYear }) }} 🧧
     </h1>
     <!-- text-2xl 设置副标题字体大小 -->
     <p class="text-2xl">
@@ -32,13 +32,16 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 const router = useRouter()
 
+// 固定年份为 2026
+const appYear = 2026
+
 /**
  * 庆祝点击事件处理函数
  */
 const celebrate = () => {
   // 弹出成功提示消息
   ElMessage({
-    message: t('home.blessingMsg'),
+    message: t('home.blessingMsg', { year: appYear }),
     type: 'success', // 消息类型为成功
     duration: 5000, // 消息显示时长为 5 秒
   })

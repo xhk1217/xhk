@@ -10,7 +10,7 @@ export default [
       return {
         code: 0, // 业务状态码
         data: {
-          message: '2026 新年快乐！', // 返回的消息内容
+          message: 'Success from Mock API!', // 返回的消息内容
         },
       }
     },

@@ -1,7 +1,7 @@
 {
-  "title": "2026 Happy New Year",
+  "title": "{year} Happy New Year",
   "subtitle": "Year of the Snake, all the best!",
   "btnBlessing": "Send Blessing",
   "btnDemo": "View Demo",
-  "blessingMsg": "Wish you in 2026: Good health, successful career, and a happy family!"
+  "blessingMsg": "Wish you in {year}: Good health, successful career, and a happy family!"
 }
