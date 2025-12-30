@@ -1,6 +1,8 @@
 {
-  "title": "Happy New Year {year}",
-  "subtitle": "Year of the Horse, full of energy!",
+  "badge": "HAPPY NEW YEAR",
+  "title": "Happy New Year",
+  "subtitle": "May you keep your passion and never stop in the new year.<br />May hope be like fireworks, lighting up the way ahead.",
+  "wish": "Peace and Joy · Everything goes well · All wishes come true",
   "btnBlessing": "Open New Year Wishes",
   "btnDemo": "Function Test",
   "blessingMsg": "Wish you in {year}: All dreams come true!",

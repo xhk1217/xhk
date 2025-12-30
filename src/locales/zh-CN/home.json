@@ -1,6 +1,8 @@
 {
-  "title": "{year} 元旦快乐",
-  "subtitle": "丙午马年，龙马精神！",
+  "badge": "HAPPY NEW YEAR",
+  "title": "元旦快乐",
+  "subtitle": "愿你在新的一年里，心怀热爱，步履不停。<br />愿希望如烟花，照亮前路。",
+  "wish": "平安喜乐 · 万事顺遂 · 所愿皆可期",
   "btnBlessing": "开启新年祝福",
   "btnDemo": "功能测试",
   "blessingMsg": "祝你在 {year} 年：心想事成，万事如意！",

@@ -5,21 +5,35 @@
 		<div class="home-shell">
 			<main class="home-main">
 				<section class="home-card" aria-label="2026 元旦快乐">
+					<div class="home-actions">
+						<button
+							class="action-btn"
+							@click="settings.toggleTheme"
+							:title="settings.isDark ? '切换到浅色模式' : '切换到深色模式'"
+						>
+							<div :class="settings.isDark ? 'i-carbon-sun' : 'i-carbon-moon'" />
+						</button>
+						<button
+							class="action-btn"
+							@click="toggleLang"
+							:title="settings.lang === 'zh-CN' ? 'Switch to English' : '切换到中文'"
+						>
+							<div class="i-carbon-language" />
+						</button>
+					</div>
+
 					<div class="home-badge">
 						<span class="home-badge-dot" aria-hidden="true" />
-						<span class="home-badge-text">HAPPY NEW YEAR</span>
+						<span class="home-badge-text">{{ t('home.badge') }}</span>
 					</div>
 
 					<h1 class="home-year">2026</h1>
-					<h2 class="home-title">元旦快乐</h2>
-					<p class="home-subtitle">
-						愿你在新的一年里，心怀热爱，步履不停。<br />
-						愿希望如烟花，照亮前路。
-					</p>
+					<h2 class="home-title">{{ t('home.title') }}</h2>
+					<p class="home-subtitle" v-html="t('home.subtitle')" />
 
 					<div class="home-divider" aria-hidden="true" />
 
-					<p class="home-wish">平安喜乐 · 万事顺遂 · 所愿皆可期</p>
+					<p class="home-wish">{{ t('home.wish') }}</p>
 				</section>
 			</main>
 		</div>
@@ -28,12 +42,23 @@
 
 <script setup lang="ts">
 import FireworksCanvas from '@/components/FireworksCanvas.vue'
+import { useSettingsStore } from '@/store/settings'
+import { useI18n } from 'vue-i18n'
+
+const settings = useSettingsStore()
+const { t } = useI18n()
+
+const toggleLang = () => {
+	const newLang = settings.lang === 'zh-CN' ? 'en' : 'zh-CN'
+	settings.setLang(newLang)
+}
 </script>
 
 <style scoped>
 .home-root {
 	position: relative;
-	min-height: 100vh;
+	height: 100vh;
+	height: 100dvh;
 	overflow: hidden;
 	background: var(--bg-color);
 	color: var(--text-main);
@@ -69,7 +94,7 @@ import FireworksCanvas from '@/components/FireworksCanvas.vue'
 .home-shell {
 	position: relative;
 	z-index: 2;
-	min-height: 100vh;
+	height: 100%;
 	padding: 24px;
 	display: flex;
 	align-items: center;
@@ -81,6 +106,7 @@ import FireworksCanvas from '@/components/FireworksCanvas.vue'
 }
 
 .home-card {
+	position: relative;
 	border: 1px solid color-mix(in oklab, var(--border-color) 85%, transparent);
 	background: color-mix(in oklab, var(--card-bg) 88%, transparent);
 	border-radius: 24px;
@@ -88,6 +114,43 @@ import FireworksCanvas from '@/components/FireworksCanvas.vue'
 	backdrop-filter: blur(10px);
 	-webkit-backdrop-filter: blur(10px);
 	box-shadow: 0 10px 30px color-mix(in oklab, var(--text-main) 10%, transparent);
+	max-height: calc(100vh - 48px);
+}
+
+.home-actions {
+	position: absolute;
+	top: 20px;
+	right: 20px;
+	display: flex;
+	gap: 12px;
+	z-index: 10;
+}
+
+.action-btn {
+	width: 40px;
+	height: 40px;
+	border-radius: 12px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid color-mix(in oklab, var(--border-color) 50%, transparent);
+	background: color-mix(in oklab, var(--card-bg) 50%, transparent);
+	color: var(--text-main);
+	cursor: pointer;
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+}
+
+.action-btn:hover {
+	background: color-mix(in oklab, var(--color-primary) 15%, transparent);
+	border-color: var(--color-primary);
+	transform: translateY(-2px);
+	color: var(--color-primary);
+}
+
+.action-btn:active {
+	transform: translateY(0);
 }
 
 .home-badge {
