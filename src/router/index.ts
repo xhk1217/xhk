@@ -20,4 +20,17 @@ const router = createRouter({
   ],
 })
 
+// 添加全局路由守卫
+router.beforeEach((to, from, next) => {
+  // 定义允许访问的路径白名单
+  const whiteList = ['/', '/FunctionTest']
+
+  // 如果访问的路径不在白名单内，则强制跳转到首页
+  if (!whiteList.includes(to.path)) {
+    next('/')
+  } else {
+    next()
+  }
+})
+
 export default router // 导出路由实例供 main.ts 使用
