@@ -54,7 +54,7 @@ const toggleLang = () => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .home-root {
 	position: relative;
 	height: 100vh;
@@ -62,29 +62,31 @@ const toggleLang = () => {
 	overflow: hidden;
 	background: var(--bg-color);
 	color: var(--text-main);
-}
 
-.home-root::before,
-.home-root::after {
-	content: '';
-	position: absolute;
-	inset: -30vmax;
-	pointer-events: none;
-	background:
-		radial-gradient(circle at 20% 20%, color-mix(in oklab, var(--color-primary) 35%, transparent), transparent 55%),
-		radial-gradient(circle at 78% 28%, color-mix(in oklab, var(--color-primary) 22%, transparent), transparent 60%),
-		radial-gradient(circle at 50% 80%, color-mix(in oklab, var(--color-primary) 16%, transparent), transparent 60%);
-	filter: blur(10px);
-	opacity: 0.9;
-	transform: translateZ(0);
-	z-index: 0; /* 确保在根背景之上，但在内容之下 */
-}
+	&::before,
+	&::after {
+		content: '';
+		position: absolute;
+		inset: -30vmax;
+		pointer-events: none;
+		background: radial-gradient(
+				circle at 20% 20%,
+				color-mix(in oklab, var(--color-primary) 35%, transparent),
+				transparent 55%
+			),
+			radial-gradient(circle at 78% 28%, color-mix(in oklab, var(--color-primary) 22%, transparent), transparent 60%),
+			radial-gradient(circle at 50% 80%, color-mix(in oklab, var(--color-primary) 16%, transparent), transparent 60%);
+		filter: blur(60px);
+		opacity: 0.9;
+		transform: translateZ(0);
+		z-index: 0;
+	}
 
-.home-root::after {
-	inset: -40vmax;
-	opacity: 0.55;
-	filter: blur(18px);
-	z-index: 0;
+	&::after {
+		inset: -40vmax;
+		opacity: 0.55;
+		filter: blur(90px);
+	}
 }
 
 .home-fireworks {
@@ -107,14 +109,27 @@ const toggleLang = () => {
 
 .home-card {
 	position: relative;
-	border: 1px solid color-mix(in oklab, var(--border-color) 85%, transparent);
-	background: color-mix(in oklab, var(--card-bg) 88%, transparent);
+	border: 1px solid color-mix(in oklab, var(--border-color) 40%, transparent);
+	background: color-mix(in oklab, var(--card-bg) 65%, transparent);
 	border-radius: 24px;
 	padding: clamp(20px, 4vw, 44px);
-	backdrop-filter: blur(10px);
-	-webkit-backdrop-filter: blur(10px);
-	box-shadow: 0 10px 30px color-mix(in oklab, var(--text-main) 10%, transparent);
+	backdrop-filter: blur(2px) saturate(160%);
+	-webkit-backdrop-filter: blur(2px) saturate(160%);
+	box-shadow: 0 10px 30px color-mix(in oklab, var(--text-main) 10%, transparent),
+		inset 0 0 0 1px color-mix(in oklab, #fff 10%, transparent);
 	max-height: calc(100vh - 48px);
+	overflow: hidden;
+
+	&::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+		opacity: 0.04;
+		pointer-events: none;
+		z-index: -1;
+	}
+
 }
 
 .home-actions {
@@ -124,6 +139,7 @@ const toggleLang = () => {
 	display: flex;
 	gap: 12px;
 	z-index: 10;
+
 }
 
 .action-btn {
@@ -140,17 +156,23 @@ const toggleLang = () => {
 	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 	backdrop-filter: blur(4px);
 	-webkit-backdrop-filter: blur(4px);
-}
 
-.action-btn:hover {
-	background: color-mix(in oklab, var(--color-primary) 15%, transparent);
-	border-color: var(--color-primary);
-	transform: translateY(-2px);
-	color: var(--color-primary);
-}
+	&:hover {
+		background: color-mix(in oklab, var(--color-primary) 15%, transparent);
+		border-color: var(--color-primary);
+		transform: translateY(-2px);
+		color: var(--color-primary);
+	}
 
-.action-btn:active {
-	transform: translateY(0);
+	&:active {
+		transform: translateY(0);
+	}
+
+	@media (max-width: 640px) {
+		width: 32px;
+		height: 32px;
+		border-radius: 8px;
+	}
 }
 
 .home-badge {
@@ -162,21 +184,21 @@ const toggleLang = () => {
 	border: 1px solid color-mix(in oklab, var(--color-primary) 30%, transparent);
 	background: color-mix(in oklab, var(--color-primary) 10%, transparent);
 	margin-bottom: 18px;
-}
 
-.home-badge-dot {
-	width: 10px;
-	height: 10px;
-	border-radius: 999px;
-	background: var(--color-primary);
-	box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-primary) 25%, transparent);
-}
+	&-dot {
+		width: 10px;
+		height: 10px;
+		border-radius: 999px;
+		background: var(--color-primary);
+		box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-primary) 25%, transparent);
+	}
 
-.home-badge-text {
-	letter-spacing: 0.22em;
-	font-weight: 700;
-	font-size: 12px;
-	color: color-mix(in oklab, var(--text-main) 78%, var(--color-primary));
+	&-text {
+		letter-spacing: 0.22em;
+		font-weight: 700;
+		font-size: 12px;
+		color: color-mix(in oklab, var(--text-main) 78%, var(--color-primary));
+	}
 }
 
 .home-year {
@@ -229,9 +251,11 @@ const toggleLang = () => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.home-root::before,
-	.home-root::after {
-		filter: none;
+	.home-root {
+		&::before,
+		&::after {
+			filter: none;
+		}
 	}
 }
 </style>

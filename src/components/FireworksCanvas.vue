@@ -37,6 +37,7 @@ type Rocket = {
   ageMs: number
   hue: number
   trail: Array<{ x: number, y: number }>
+  isManual?: boolean
 }
 
 type Spark = {
@@ -66,12 +67,23 @@ type Flash = {
   hue: number
 }
 
+type TextEffect = {
+  x: number
+  y: number
+  text: string
+  alpha: number
+  lifeMs: number
+  ageMs: number
+  hue: number
+}
+
 const rockets: Rocket[] = []
 const sparks: Spark[] = []
 const flashes: Flash[] = []
+const textEffects: TextEffect[] = []
 
-const MAX_ROCKETS = 6
-const MAX_SPARKS = 3000
+const MAX_ROCKETS = 10
+const MAX_SPARKS = 5000
 const GRAVITY = 750 // 进一步降低重力，让条状更飘逸
 const AIR_DRAG = 0.982
 
@@ -132,7 +144,7 @@ const resizeCanvas = () => {
   if (!canvas) return
 
   const rect = canvas.getBoundingClientRect()
-  const dpr = clamp(window.devicePixelRatio || 1, 1, 2)
+  const dpr = window.devicePixelRatio || 1
   const width = Math.max(1, Math.floor(rect.width * dpr))
   const height = Math.max(1, Math.floor(rect.height * dpr))
 
@@ -142,7 +154,7 @@ const resizeCanvas = () => {
   }
 }
 
-const launchRocket = (customX?: number, customY?: number) => {
+const launchRocket = (customX?: number, customY?: number, isManual = false) => {
   const canvas = canvasEl.value
   if (!canvas) return
   if (rockets.length >= MAX_ROCKETS) return
@@ -156,8 +168,99 @@ const launchRocket = (customX?: number, customY?: number) => {
   const y = h + 10
   const targetY = customY ?? h * (0.15 + Math.random() * 0.4)
 
-  const vx = customX ? (Math.random() - 0.5) * 40 : (Math.random() - 0.5) * 80
-  const vy = -(850 + Math.random() * 300)
+  let vx = customX ? 0 : (Math.random() - 0.5) * 80
+  let vy = -(850 + Math.random() * 300)
+  let lifeMs = 2500
+
+  if (isManual && customY !== undefined) {
+    // 手动点击：通过模拟确定所需初速度，确保可以到达目标高度，同时放慢上升速度更接近真实
+    const gravity = GRAVITY * 0.12
+    const frameDt = 1 / 60
+    const dragPerFrame = Math.pow(AIR_DRAG, frameDt * 60)
+    const startY = y
+    const target = Math.min(customY, startY - 20)
+    const maxTime = 8
+
+    const simulate = (initialVy: number) => {
+      let vySim = initialVy
+      let ySim = startY
+      let elapsed = 0
+      let steps = 0
+
+      while (elapsed < maxTime) {
+        vySim *= dragPerFrame
+        vySim += gravity * frameDt
+        ySim += vySim * frameDt
+        elapsed += frameDt
+        steps += 1
+
+        if (ySim <= target) {
+          return { hit: true, time: elapsed, steps }
+        }
+      }
+
+      return { hit: false, time: elapsed, steps }
+    }
+
+    let low = -2400
+    let high = -150
+    let bestVy = vy
+    let bestTime = 1.5
+    let bestSteps = Math.round(bestTime / frameDt)
+    let found = false
+
+    for (let i = 0; i < 36; i++) {
+      const testVy = (low + high) / 2
+      const result = simulate(testVy)
+
+      if (result.hit) {
+        found = true
+        bestVy = testVy
+        bestTime = result.time
+        bestSteps = Math.max(1, result.steps)
+        high = testVy
+      } else {
+        low = testVy
+      }
+    }
+
+    if (found) {
+      // 二次尝试进一步减小初速度以获得更长上升时间但仍能命中目标
+      let adjustedVy = bestVy
+      let adjustedTime = bestTime
+      let adjustedSteps = bestSteps
+      for (let j = 0; j < 12; j++) {
+        const testVy = adjustedVy * 0.9
+        const res = simulate(testVy)
+        if (res.hit) {
+          adjustedVy = testVy
+          adjustedTime = res.time
+          adjustedSteps = res.steps
+        } else {
+          break
+        }
+      }
+
+      vy = adjustedVy
+      bestSteps = adjustedSteps
+      bestTime = adjustedTime
+
+      const dx = (customX ?? x) - x
+      if (Math.abs(dx) > 1) {
+        const sumFactor = frameDt * (1 - Math.pow(dragPerFrame, bestSteps)) / (1 - dragPerFrame)
+        vx = dx / Math.max(0.001, sumFactor)
+      } else {
+        vx = 0
+      }
+
+      lifeMs = Math.max(lifeMs, (bestTime + 1.2) * 1000)
+    } else {
+      const dy = Math.max(0, h - customY)
+      const minVy = -Math.sqrt(2 * gravity * dy) * 1.3
+      vy = Math.min(minVy, -750)
+      lifeMs = Math.max(lifeMs, 5000)
+    }
+  }
 
   rockets.push({
     x,
@@ -165,10 +268,11 @@ const launchRocket = (customX?: number, customY?: number) => {
     vx,
     vy,
     targetY,
-    lifeMs: 2500,
+    lifeMs,
     ageMs: 0,
     hue,
     trail: [],
+    isManual,
   })
 }
 
@@ -176,15 +280,44 @@ const handlePointerDown = (e: PointerEvent) => {
   const canvas = canvasEl.value
   if (!canvas) return
   const rect = canvas.getBoundingClientRect()
-  const dpr = window.devicePixelRatio || 1
-  const x = (e.clientX - rect.left) * dpr
-  const y = (e.clientY - rect.top) * dpr
   
-  // 点击直接在目标位置附近发射
-  launchRocket(x, y + 100)
+  // 关键修复：使用 canvas 的实际像素尺寸与 CSS 尺寸的比例来映射坐标
+  const scaleX = canvas.width / rect.width
+  const scaleY = canvas.height / rect.height
+  const x = (e.clientX - rect.left) * scaleX
+  const y = (e.clientY - rect.top) * scaleY
+  
+  // 点击直接在鼠标位置发射并爆炸
+  // 为了确保能到达点击位置，我们给手动发射的火箭一个更强的初始速度
+  launchRocket(x, y, true)
+
+  // 添加文字效果
+  textEffects.push({
+    x,
+    y,
+    text: '2026',
+    alpha: 1,
+    lifeMs: 1500,
+    ageMs: 0,
+    hue: Math.random() * 360
+  })
+
+  console.debug('[fireworks] click', {
+    clientX: e.clientX,
+    clientY: e.clientY,
+    canvasX: x,
+    canvasY: y,
+    scaleX,
+    scaleY,
+    canvasWidth: canvas.width,
+    canvasHeight: canvas.height
+  })
 }
 
 const explode = (rocket: Rocket) => {
+  if (rocket.isManual) {
+    console.debug('[fireworks] explode', { x: rocket.x, y: rocket.y, targetY: rocket.targetY })
+  }
   const count = 120 + Math.floor(Math.random() * 80) // 增加粒子数量
   const isWillow = Math.random() > 0.5 // 50% 概率产生柳絮状长条烟花
   
@@ -270,7 +403,7 @@ const step = (now: number) => {
 
   const elapsed = now - startAt
   const intensePhase = elapsed < 15_000
-  const launchIntervalMs = intensePhase ? 450 : 850
+  const launchIntervalMs = intensePhase ? 250 : 450
 
   if (!lastLaunchAt) lastLaunchAt = now
   if (now - lastLaunchAt >= launchIntervalMs) {
@@ -283,6 +416,35 @@ const step = (now: number) => {
   
   ctx.save()
   ctx.globalCompositeOperation = 'screen'
+
+  // 绘制文字效果
+  for (let i = textEffects.length - 1; i >= 0; i--) {
+    const t = textEffects[i]
+    t.ageMs += dt * 1000
+    const progress = t.ageMs / t.lifeMs
+    if (progress >= 1) {
+      textEffects.splice(i, 1)
+      continue
+    }
+    
+    ctx.save()
+    const alpha = (1 - progress)
+    ctx.globalAlpha = alpha
+    // 炫彩效果：随时间改变色相
+    const hue = (t.hue + progress * 360) % 360
+    ctx.fillStyle = hsla(hue, 100, 70, 1)
+    ctx.shadowBlur = 15
+    ctx.shadowColor = hsla(hue, 100, 50, 0.8)
+    
+    const fontSize = Math.floor(24 + progress * 20)
+    ctx.font = `bold ${fontSize}px "Inter", -apple-system, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    
+    // 向上漂浮并带有轻微放大效果
+    ctx.fillText(t.text, t.x, t.y - progress * 80)
+    ctx.restore()
+  }
 
   // 绘制闪光
   for (let i = flashes.length - 1; i >= 0; i--) {
@@ -307,9 +469,13 @@ const step = (now: number) => {
   for (let i = rockets.length - 1; i >= 0; i--) {
     const rocket = rockets[i]
     rocket.ageMs += dt * 1000
+    
+    // 物理更新：使用 dt 缩放阻力和重力
+    const drag = Math.pow(AIR_DRAG, dt * 60)
+    rocket.vx *= drag
+    rocket.vy *= drag
     rocket.vy += GRAVITY * dt * 0.15
-    rocket.vx *= AIR_DRAG
-    rocket.vy *= AIR_DRAG
+    
     rocket.x += rocket.vx * dt
     rocket.y += rocket.vy * dt
 
@@ -322,7 +488,16 @@ const step = (now: number) => {
       drawGlowDot(ctx, p.x, p.y, 1.2, rocket.hue, a, 90, 70)
     }
 
-    const shouldExplode = rocket.y <= rocket.targetY || rocket.ageMs >= rocket.lifeMs || rocket.vy >= 0
+    // 爆炸条件：到达目标高度、速度反向（到达顶点）或寿命耗尽
+    const reachedTarget = rocket.y <= rocket.targetY
+    const reachedPeak = rocket.vy >= 0
+    const timeout = rocket.ageMs >= rocket.lifeMs
+    
+    // 手动发射的火箭必须到达目标高度才爆炸，除非超时
+    const shouldExplode = rocket.isManual 
+      ? (reachedTarget || timeout)
+      : (reachedTarget || reachedPeak || timeout)
+
     if (shouldExplode) {
       explode(rocket)
       rockets.splice(i, 1)
@@ -421,6 +596,7 @@ const stop = () => {
   rockets.length = 0
   sparks.length = 0
   flashes.length = 0
+  textEffects.length = 0
 
   const canvas = canvasEl.value
   const ctx = canvas?.getContext('2d')
