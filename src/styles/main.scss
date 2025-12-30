@@ -30,6 +30,15 @@ body {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
+  
+  // 针对英文状态的字体优化
+  &[lang="en"] {
+    letter-spacing: -0.01em; // Inter 字体在英文下稍微收紧一点更好看
+    word-spacing: 0.05em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
 }
 
 /* 隐藏所有滚动条 */

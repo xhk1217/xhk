@@ -250,6 +250,30 @@ const toggleLang = () => {
 	color: color-mix(in oklab, var(--text-main) 86%, var(--color-primary));
 }
 
+// 针对英文状态的排版优化
+:lang(en) {
+	.home-badge-text {
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+
+	.home-title {
+		line-height: 1.1;
+		letter-spacing: -0.02em;
+	}
+
+	.home-subtitle {
+		line-height: 1.6;
+		letter-spacing: -0.01em;
+	}
+
+	.home-wish {
+		letter-spacing: 0.05em;
+		font-style: italic;
+		opacity: 0.9;
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.home-root {
 		&::before,

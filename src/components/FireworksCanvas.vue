@@ -8,6 +8,7 @@
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useSettingsStore } from '@/store/settings'
 
 type Props = {
   enabled?: boolean
@@ -17,6 +18,7 @@ const props = withDefaults(defineProps<Props>(), {
   enabled: true,
 })
 
+const settings = useSettingsStore()
 const canvasEl = ref<HTMLCanvasElement | null>(null)
 
 let rafId: number | null = null
@@ -321,6 +323,9 @@ const explode = (rocket: Rocket) => {
   const count = 120 + Math.floor(Math.random() * 80) // 增加粒子数量
   const isWillow = Math.random() > 0.5 // 50% 概率产生柳絮状长条烟花
   
+  // 明亮模式下降低亮度以增加对比度
+  const baseLight = settings.isDark ? rand(60, 80) : rand(40, 55)
+
   // 添加爆炸闪光
   flashes.push({
     x: rocket.x,
@@ -355,7 +360,7 @@ const explode = (rocket: Rocket) => {
       decay: isWillow ? 0.96 : 0.98,
       hue,
       sat: rand(90, 100),
-      light: rand(60, 80),
+      light: baseLight,
       flicker: Math.random() > 0.3 ? rand(0.1, 0.4) : 0,
       trail: []
     })
@@ -372,14 +377,18 @@ const drawGlowDot = (
   sat = 98,
   light = 62,
 ) => {
+  // 明亮模式下降低亮度
+  const adjustedLight = settings.isDark ? light : light * 0.7
+  const adjustedHaloLight = settings.isDark ? Math.min(90, light + 15) : light * 0.8
+
   ctx.globalAlpha = alpha
-  ctx.fillStyle = hsla(hue, sat, light, 1)
+  ctx.fillStyle = hsla(hue, sat, adjustedLight, 1)
   ctx.beginPath()
   ctx.arc(x, y, r, 0, Math.PI * 2)
   ctx.fill()
 
   ctx.globalAlpha = alpha * 0.4
-  ctx.fillStyle = hsla(hue, sat, Math.min(90, light + 15), 1)
+  ctx.fillStyle = hsla(hue, sat, adjustedHaloLight, 1)
   ctx.beginPath()
   ctx.arc(x, y, r * 3, 0, Math.PI * 2)
   ctx.fill()
@@ -432,12 +441,21 @@ const step = (now: number) => {
     ctx.globalAlpha = alpha
     // 炫彩效果：随时间改变色相
     const hue = (t.hue + progress * 360) % 360
-    ctx.fillStyle = hsla(hue, 100, 70, 1)
+    // 明亮模式下文字颜色稍深
+    const textLight = settings.isDark ? 70 : 50
+    const shadowLight = settings.isDark ? 50 : 40
+    
+    ctx.fillStyle = hsla(hue, 100, textLight, 1)
     ctx.shadowBlur = 15
-    ctx.shadowColor = hsla(hue, 100, 50, 0.8)
+    ctx.shadowColor = hsla(hue, 100, shadowLight, 0.8)
     
     const fontSize = Math.floor(24 + progress * 20)
-    ctx.font = `bold ${fontSize}px "Inter", -apple-system, sans-serif`
+    // 优化字体栈：英文状态下使用更具现代感的无衬线字体，中文状态下兼顾系统默认
+    const fontStack = settings.lang === 'en' 
+      ? '"Inter", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+      : '"Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", sans-serif'
+    
+    ctx.font = `bold ${fontSize}px ${fontStack}`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     
@@ -457,8 +475,12 @@ const step = (now: number) => {
     }
     ctx.globalAlpha = f.alpha * (1 - t)
     const grad = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.radius)
-    grad.addColorStop(0, hsla(f.hue, 100, 90, 1))
-    grad.addColorStop(1, hsla(f.hue, 100, 50, 0))
+    
+    const flashInnerLight = settings.isDark ? 90 : 60
+    const flashOuterLight = settings.isDark ? 50 : 30
+    
+    grad.addColorStop(0, hsla(f.hue, 100, flashInnerLight, 1))
+    grad.addColorStop(1, hsla(f.hue, 100, flashOuterLight, 0))
     ctx.fillStyle = grad
     ctx.beginPath()
     ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2)

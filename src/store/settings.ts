@@ -21,8 +21,9 @@ export const useSettingsStore = defineStore('settings', () => {
 
   // 监听语言变化并持久化
   watch(lang, (newLang) => {
+    document.documentElement.lang = newLang
     localStorage.setItem('lang', newLang)
-  })
+  }, { immediate: true })
 
   const toggleTheme = () => {
     isDark.value = !isDark.value
