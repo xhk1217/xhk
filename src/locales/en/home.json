@@ -1,7 +1,13 @@
 {
-  "title": "{year} Happy New Year",
-  "subtitle": "Year of the Snake, all the best!",
-  "btnBlessing": "Send Blessing",
-  "btnDemo": "View Demo",
-  "blessingMsg": "Wish you in {year}: Good health, successful career, and a happy family!"
+  "title": "Happy New Year {year}",
+  "subtitle": "Year of the Horse, full of energy!",
+  "btnBlessing": "Open New Year Wishes",
+  "btnDemo": "Function Test",
+  "blessingMsg": "Wish you in {year}: All dreams come true!",
+  "countdown": {
+    "days": "Days",
+    "hours": "Hrs",
+    "minutes": "Min",
+    "seconds": "Sec"
+  }
 }

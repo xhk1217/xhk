@@ -1,7 +1,13 @@
 {
-  "title": "{year} 新年快乐",
-  "subtitle": "蛇年大吉，万事如意！",
-  "btnBlessing": "点我送祝福",
-  "btnDemo": "查看功能演示",
-  "blessingMsg": "祝你在 {year} 年：身体健康，事业有成，阖家幸福！"
+  "title": "{year} 元旦快乐",
+  "subtitle": "丙午马年，龙马精神！",
+  "btnBlessing": "开启新年祝福",
+  "btnDemo": "功能测试",
+  "blessingMsg": "祝你在 {year} 年：心想事成，万事如意！",
+  "countdown": {
+    "days": "天",
+    "hours": "时",
+    "minutes": "分",
+    "seconds": "秒"
+  }
 }
