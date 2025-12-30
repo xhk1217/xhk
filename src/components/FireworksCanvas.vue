@@ -1,9 +1,10 @@
 <template>
-  <canvas
-    ref="canvasEl"
-    class="fireworks-canvas"
-    aria-hidden="true"
-  />
+  <div class="fireworks-wrap" aria-hidden="true">
+    <!-- 底层：只画爆炸粒子 + 残影淡出 -->
+    <canvas ref="sparkEl" class="fireworks-canvas" />
+    <!-- 顶层：画火箭、闪光、文字，每帧全清，保证清晰 -->
+    <canvas ref="uiEl" class="fireworks-canvas" />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -19,13 +20,22 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const settings = useSettingsStore()
-const canvasEl = ref<HTMLCanvasElement | null>(null)
+const sparkEl = ref<HTMLCanvasElement | null>(null)
+const uiEl = ref<HTMLCanvasElement | null>(null)
 
 let rafId: number | null = null
 let resizeObserver: ResizeObserver | null = null
 let lastFrameAt = 0
 let lastLaunchAt = 0
 let startAt = 0
+
+// 统一 DPR 记录
+let dpr = 1
+const computeDpr = () => {
+  const raw = window.devicePixelRatio || 1
+  const isMobile = matchMedia('(pointer: coarse)').matches
+  dpr = Math.min(isMobile ? 1.5 : 2, raw)
+}
 
 type Rgb = { r: number, g: number, b: number }
 
@@ -38,7 +48,6 @@ type Rocket = {
   lifeMs: number
   ageMs: number
   hue: number
-  trail: Array<{ x: number, y: number }>
   isManual?: boolean
 }
 
@@ -56,7 +65,6 @@ type Spark = {
   sat: number
   light: number
   flicker: number
-  trail: Array<{ x: number, y: number }>
 }
 
 type Flash = {
@@ -142,22 +150,28 @@ const getBgRgb = (): Rgb => {
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
 
 const resizeCanvas = () => {
-  const canvas = canvasEl.value
-  if (!canvas) return
+  const s = sparkEl.value
+  const u = uiEl.value
+  if (!s || !u) return
 
-  const rect = canvas.getBoundingClientRect()
-  const dpr = window.devicePixelRatio || 1
+  computeDpr()
+
+  const rect = u.getBoundingClientRect()
   const width = Math.max(1, Math.floor(rect.width * dpr))
   const height = Math.max(1, Math.floor(rect.height * dpr))
 
-  if (canvas.width !== width || canvas.height !== height) {
-    canvas.width = width
-    canvas.height = height
+  if (s.width !== width || s.height !== height) {
+    s.width = width
+    s.height = height
+  }
+  if (u.width !== width || u.height !== height) {
+    u.width = width
+    u.height = height
   }
 }
 
 const launchRocket = (customX?: number, customY?: number, isManual = false) => {
-  const canvas = canvasEl.value
+  const canvas = uiEl.value
   if (!canvas) return
   if (rockets.length >= MAX_ROCKETS) return
 
@@ -273,21 +287,17 @@ const launchRocket = (customX?: number, customY?: number, isManual = false) => {
     lifeMs,
     ageMs: 0,
     hue,
-    trail: [],
     isManual,
   })
 }
 
 const handlePointerDown = (e: PointerEvent) => {
-  const canvas = canvasEl.value
+  const canvas = uiEl.value
   if (!canvas) return
   const rect = canvas.getBoundingClientRect()
   
-  // 关键修复：使用 canvas 的实际像素尺寸与 CSS 尺寸的比例来映射坐标
-  const scaleX = canvas.width / rect.width
-  const scaleY = canvas.height / rect.height
-  const x = (e.clientX - rect.left) * scaleX
-  const y = (e.clientY - rect.top) * scaleY
+  const x = (e.clientX - rect.left) * dpr
+  const y = (e.clientY - rect.top) * dpr
   
   // 点击直接在鼠标位置发射并爆炸
   // 为了确保能到达点击位置，我们给手动发射的火箭一个更强的初始速度
@@ -309,8 +319,7 @@ const handlePointerDown = (e: PointerEvent) => {
     clientY: e.clientY,
     canvasX: x,
     canvasY: y,
-    scaleX,
-    scaleY,
+    dpr,
     canvasWidth: canvas.width,
     canvasHeight: canvas.height
   })
@@ -362,7 +371,6 @@ const explode = (rocket: Rocket) => {
       sat: rand(90, 100),
       light: baseLight,
       flicker: Math.random() > 0.3 ? rand(0.1, 0.4) : 0,
-      trail: []
     })
   }
 }
@@ -401,10 +409,12 @@ const step = (now: number) => {
   if (prefersReducedMotion()) return
   if (document.hidden) return
 
-  const canvas = canvasEl.value
-  if (!canvas) return
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
+  const sEl = sparkEl.value
+  const uEl = uiEl.value
+  if (!sEl || !uEl) return
+  const sCtx = sEl.getContext('2d')
+  const uCtx = uEl.getContext('2d')
+  if (!sCtx || !uCtx) return
 
   if (!lastFrameAt) lastFrameAt = now
   const dt = clamp((now - lastFrameAt) / 1000, 0, 0.033)
@@ -420,13 +430,14 @@ const step = (now: number) => {
     launchRocket()
   }
 
-  // 透明背景下使用 clearRect，不再使用 fillRect 覆盖
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
-  
-  ctx.save()
-  ctx.globalCompositeOperation = 'screen'
+  // --- 1. 处理 UI 层 (Rockets, Text, Flashes) ---
+  // UI 层每帧完全擦除，确保文字和火箭头绝对清晰，无残留
+  uCtx.clearRect(0, 0, uEl.width, uEl.height)
+  uCtx.setTransform(1, 0, 0, 1, 0, 0)
+  uCtx.globalAlpha = 1
+  uCtx.globalCompositeOperation = 'source-over'
 
-  // 绘制文字效果
+  // 绘制文字效果 (UI层)
   for (let i = textEffects.length - 1; i >= 0; i--) {
     const t = textEffects[i]
     t.ageMs += dt * 1000
@@ -436,35 +447,30 @@ const step = (now: number) => {
       continue
     }
     
-    ctx.save()
+    uCtx.save()
     const alpha = (1 - progress)
-    ctx.globalAlpha = alpha
-    // 炫彩效果：随时间改变色相
+    uCtx.globalAlpha = alpha
     const hue = (t.hue + progress * 360) % 360
-    // 明亮模式下文字颜色稍深
     const textLight = settings.isDark ? 70 : 50
     const shadowLight = settings.isDark ? 50 : 40
     
-    ctx.fillStyle = hsla(hue, 100, textLight, 1)
-    ctx.shadowBlur = 15
-    ctx.shadowColor = hsla(hue, 100, shadowLight, 0.8)
+    uCtx.fillStyle = hsla(hue, 100, textLight, 1)
+    uCtx.shadowBlur = 8
+    uCtx.shadowColor = hsla(hue, 100, shadowLight, 0.6)
     
     const fontSize = Math.floor(24 + progress * 20)
-    // 优化字体栈：英文状态下使用更具现代感的无衬线字体，中文状态下兼顾系统默认
     const fontStack = settings.lang === 'en' 
       ? '"Inter", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
       : '"Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", sans-serif'
     
-    ctx.font = `bold ${fontSize}px ${fontStack}`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    
-    // 向上漂浮并带有轻微放大效果
-    ctx.fillText(t.text, t.x, t.y - progress * 80)
-    ctx.restore()
+    uCtx.font = `bold ${fontSize}px ${fontStack}`
+    uCtx.textAlign = 'center'
+    uCtx.textBaseline = 'middle'
+    uCtx.fillText(t.text, t.x, t.y - progress * 80)
+    uCtx.restore()
   }
 
-  // 绘制闪光
+  // 绘制闪光 (UI层)
   for (let i = flashes.length - 1; i >= 0; i--) {
     const f = flashes[i]
     f.ageMs += dt * 1000
@@ -473,52 +479,57 @@ const step = (now: number) => {
       flashes.splice(i, 1)
       continue
     }
-    ctx.globalAlpha = f.alpha * (1 - t)
-    const grad = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.radius)
-    
+    uCtx.save()
+    uCtx.globalAlpha = f.alpha * (1 - t)
+    const grad = uCtx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.radius)
     const flashInnerLight = settings.isDark ? 90 : 60
     const flashOuterLight = settings.isDark ? 50 : 30
-    
     grad.addColorStop(0, hsla(f.hue, 100, flashInnerLight, 1))
     grad.addColorStop(1, hsla(f.hue, 100, flashOuterLight, 0))
-    ctx.fillStyle = grad
-    ctx.beginPath()
-    ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2)
-    ctx.fill()
+    uCtx.fillStyle = grad
+    uCtx.beginPath()
+    uCtx.arc(f.x, f.y, f.radius, 0, Math.PI * 2)
+    uCtx.fill()
+    uCtx.restore()
   }
 
-  // 更新/绘制火箭
+  // 更新/绘制火箭 (UI层)
   for (let i = rockets.length - 1; i >= 0; i--) {
     const rocket = rockets[i]
     rocket.ageMs += dt * 1000
-    
-    // 物理更新：使用 dt 缩放阻力和重力
     const drag = Math.pow(AIR_DRAG, dt * 60)
     rocket.vx *= drag
     rocket.vy *= drag
     rocket.vy += GRAVITY * dt * 0.15
-    
     rocket.x += rocket.vx * dt
     rocket.y += rocket.vy * dt
 
-    rocket.trail.unshift({ x: rocket.x + rand(-1, 1), y: rocket.y + rand(-1, 1) })
-    if (rocket.trail.length > 12) rocket.trail.length = 12
+    const t = rocket.ageMs / rocket.lifeMs
+    const a = clamp(1 - t, 0, 1)
 
-    for (let t = 0; t < rocket.trail.length; t++) {
-      const p = rocket.trail[t]
-      const a = (1 - t / rocket.trail.length) * 0.8
-      drawGlowDot(ctx, p.x, p.y, 1.2, rocket.hue, a, 90, 70)
-    }
+    // 火箭尾迹 (UI层，短线)
+    uCtx.save()
+    uCtx.globalAlpha = 0.35 * a
+    uCtx.lineCap = 'round'
+    uCtx.lineWidth = 2.2 * dpr
+    uCtx.strokeStyle = hsla(rocket.hue, 95, 75, 1)
+    uCtx.beginPath()
+    uCtx.moveTo(rocket.x, rocket.y)
+    uCtx.lineTo(rocket.x - rocket.vx * 6 * dt, rocket.y - rocket.vy * 6 * dt)
+    uCtx.stroke()
 
-    // 爆炸条件：到达目标高度、速度反向（到达顶点）或寿命耗尽
+    // 火箭头 (UI层)
+    uCtx.globalAlpha = 0.95 * a
+    uCtx.fillStyle = hsla(rocket.hue, 95, 78, 1)
+    uCtx.beginPath()
+    uCtx.arc(rocket.x, rocket.y, 2.2 * dpr, 0, Math.PI * 2)
+    uCtx.fill()
+    uCtx.restore()
+
     const reachedTarget = rocket.y <= rocket.targetY
     const reachedPeak = rocket.vy >= 0
     const timeout = rocket.ageMs >= rocket.lifeMs
-    
-    // 手动发射的火箭必须到达目标高度才爆炸，除非超时
-    const shouldExplode = rocket.isManual 
-      ? (reachedTarget || timeout)
-      : (reachedTarget || reachedPeak || timeout)
+    const shouldExplode = rocket.isManual ? (reachedTarget || timeout) : (reachedTarget || reachedPeak || timeout)
 
     if (shouldExplode) {
       explode(rocket)
@@ -526,7 +537,19 @@ const step = (now: number) => {
     }
   }
 
-  // 更新/绘制火花
+  // --- 2. 处理 Spark 层 (Particle Trails) ---
+  // Spark 层使用 destination-out 实现渐隐拖尾
+  sCtx.setTransform(1, 0, 0, 1, 0, 0)
+  sCtx.save()
+  sCtx.globalCompositeOperation = 'destination-out'
+  sCtx.fillStyle = 'rgba(0, 0, 0, 0.22)'
+  sCtx.fillRect(0, 0, sEl.width, sEl.height)
+  sCtx.restore()
+
+  sCtx.save()
+  sCtx.globalCompositeOperation = settings.isDark ? 'screen' : 'source-over'
+
+  // 更新/绘制火花 (Spark层)
   for (let i = sparks.length - 1; i >= 0; i--) {
     const s = sparks[i]
     s.ageMs += dt * 1000
@@ -534,56 +557,43 @@ const step = (now: number) => {
 
     s.vx *= Math.pow(s.decay, dt * 60)
     s.vy *= Math.pow(s.decay, dt * 60)
-    s.vy += GRAVITY * dt * 0.3 // 降低火花重力，让条状更持久
+    s.vy += GRAVITY * dt * 0.3
 
-    const px = s.x
-    const py = s.y
     s.x += s.vx * dt
     s.y += s.vy * dt
 
-    // 记录轨迹实现长条效果
-    s.trail.unshift({ x: s.x, y: s.y })
-    if (s.trail.length > 25) s.trail.pop() // 增加轨迹长度
-
     let alpha = (1 - lifeT) * s.alpha
     if (s.flicker > 0 && lifeT > 0.3) {
-      alpha *= (0.6 + Math.sin(now * 0.03) * 0.4)
+      alpha *= (Math.random() < 0.6 ? 0.55 : 1.0)
     }
+    alpha = Math.max(0, alpha)
 
-    ctx.globalAlpha = Math.max(0, alpha)
-    
-    // 绘制长条轨迹
-    if (s.trail.length > 1) {
-      ctx.beginPath()
-      ctx.lineWidth = s.radius * (1 - lifeT * 0.6)
-      ctx.lineCap = 'round'
-      ctx.strokeStyle = hsla(s.hue, s.sat, s.light, 1)
-      ctx.moveTo(s.trail[0].x, s.trail[0].y)
-      for (let j = 1; j < s.trail.length; j++) {
-        const p = s.trail[j]
-        // 轨迹末端逐渐变细变透明
-        ctx.globalAlpha = alpha * (1 - j / s.trail.length)
-        ctx.lineTo(p.x, p.y)
-      }
-      ctx.stroke()
-    }
+    // 1) 尾巴短线
+    sCtx.globalAlpha = alpha * 0.22
+    sCtx.lineCap = 'round'
+    sCtx.lineWidth = 2.0 * dpr
+    sCtx.strokeStyle = hsla(s.hue, s.sat, s.light, 1)
+    sCtx.beginPath()
+    sCtx.moveTo(s.x, s.y)
+    sCtx.lineTo(s.x - s.vx * 1.8 * dt, s.y - s.vy * 1.8 * dt)
+    sCtx.stroke()
 
-    // 头部发光点
-    if (lifeT < 0.9) {
-      drawGlowDot(ctx, s.x, s.y, s.radius * 1.1, s.hue, alpha, s.sat, s.light + 10)
-    }
+    // 2) 粒子点
+    sCtx.globalAlpha = alpha
+    sCtx.beginPath()
+    sCtx.fillStyle = hsla(s.hue, s.sat, s.light, 1)
+    sCtx.arc(s.x, s.y, (2.0 + 0.9 * (1 - alpha)) * dpr, 0, Math.PI * 2)
+    sCtx.fill()
 
-    if (lifeT >= 1 || s.y > canvas.height + 50) {
+    if (lifeT >= 1 || s.y > sEl.height + 50) {
       sparks.splice(i, 1)
     }
   }
-
-  ctx.restore()
+  sCtx.restore()
 }
 
 const start = () => {
-  const canvas = canvasEl.value
-  if (!canvas) return
+  if (!sparkEl.value || !uiEl.value) return
 
   resizeCanvas()
   startAt = performance.now()
@@ -598,7 +608,8 @@ const start = () => {
   resizeObserver = new ResizeObserver(() => {
     resizeCanvas()
   })
-  resizeObserver.observe(canvas)
+  // 观察 UI 层即可，两者同步
+  resizeObserver.observe(uiEl.value)
 
   window.addEventListener('pointerdown', handlePointerDown)
 
@@ -620,9 +631,10 @@ const stop = () => {
   flashes.length = 0
   textEffects.length = 0
 
-  const canvas = canvasEl.value
-  const ctx = canvas?.getContext('2d')
-  if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+  const sCtx = sparkEl.value?.getContext('2d')
+  const uCtx = uiEl.value?.getContext('2d')
+  if (sCtx) sCtx.clearRect(0, 0, sparkEl.value!.width, sparkEl.value!.height)
+  if (uCtx) uCtx.clearRect(0, 0, uiEl.value!.width, uiEl.value!.height)
 }
 
 onMounted(() => {
@@ -634,7 +646,6 @@ watch(() => props.enabled, (enabled) => {
     if (rafId == null) start()
     return
   }
-
   stop()
 })
 
@@ -644,12 +655,21 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.fireworks-wrap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
 .fireworks-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  pointer-events: none; /* 解决穿透交互 */
+  pointer-events: none;
+  display: block;
 }
 </style>
 
